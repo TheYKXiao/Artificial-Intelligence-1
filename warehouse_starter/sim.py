@@ -160,13 +160,43 @@ def _simulate(state: WarehouseState, cfg: Config, seed: int, collect_paths: bool
     # via normalization so one term doesn’t dominate by accident.
 
 
-    score = 0.0
+    # Distance, average distance per order
+    J1 = total_dist / cfg.orders
+
+    # Congestion, how much paths overlap (squared overlaps)
+    overlap_sqo = sum((h - 1) ** 2 for r in heat for h in r if h > 1)
+    J2 = overlap_sqo / cfg.orders
+
+    # Fairness, how evenly stations are loaded
+    station_means = [sum(t) / len(t) for t in per_station_times.values() if t]
+    if station_means:
+        mu = sum(station_means) / len(station_means)
+        sigma = (sum((x - mu) ** 2 for x in station_means) / len(station_means)) ** 0.5
+        J3 = sigma / max(1e-6, mu)
+    else:
+        J3 = 0.0
+
+    score = cfg.w1 * J1 + cfg.w2 * J2 + cfg.w3 * J3 + penalty
+
+    # score = 0.0
+    # metrics = {
+    #     "note": "placeholder objective (implement in sim.py TODO block)",
+    #     "total_distance": float(total_dist),
+    #     "penalty": float(penalty),
+    #     "orders": float(cfg.orders),
+    # }
+
     metrics = {
         "note": "placeholder objective (implement in sim.py TODO block)",
         "total_distance": float(total_dist),
         "penalty": float(penalty),
         "orders": float(cfg.orders),
+        "J1": float(J1),
+        "J2": float(J2),
+        "J3": float(J3),
+        "penalty": float(penalty),
     }
+
 
 
     if collect_paths:
