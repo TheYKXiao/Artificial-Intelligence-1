@@ -23,9 +23,14 @@ class Config:
     zipf_alpha: float = 1.2  # >= 1.0 means head-heavy (few popular items)
 
     # Objective weights
-    w1: float = 0.0   # travel
-    w2: float = 0.0  # congestion
-    w3: float = 0.0  # fairness
+    # w1: float = 0.0   # travel
+    # w2: float = 0.0  # congestion
+    # w3: float = 0.0  # fairness
+
+    # weights 1
+    w1: float = 0.4  
+    w2: float = 0.3 
+    w3: float = 0.3
 
     # Randomness
     seed: int = 42
