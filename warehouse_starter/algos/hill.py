@@ -20,10 +20,10 @@ def hill_climb(cfg: Config, *, steps: int, restarts: int, seed: int) -> Tuple[An
     rng = random.Random(seed)
     best_state  = None
     best_score  = float("inf")
-    history: List[float] = []
+    score_curve: List[float] = []
 
-    for r in range(restarts):
-        current = _random_layout(cfg, rng)
+    for r in range(restarts):   # Random restart 
+        current = _random_layout(cfg, rng)  # Initialize 
         cur_score, *_ = evaluate(current, cfg, seed)
 
         for step in range(steps):
@@ -36,12 +36,13 @@ def hill_climb(cfg: Config, *, steps: int, restarts: int, seed: int) -> Tuple[An
                 # global optimal
                 if cur_score < best_score:
                     best_state, best_score = current.clone(), cur_score
-            history.append(best_score)
+            score_curve.append(best_score)
 
-    return best_state, best_score, history
+    return best_state, best_score, score_curve
 
 
 def _random_layout(cfg: Config, rng: random.Random) -> WarehouseState:
+    # Generate a random feasible layout 
     A = artery_mask(cfg.rows, cfg.cols)
     artery_cells     = all_artery_cells(A)
     non_artery_cells = all_non_artery_cells(A)
@@ -54,6 +55,7 @@ def _random_layout(cfg: Config, rng: random.Random) -> WarehouseState:
 
 
 def _random_neighbor(state: WarehouseState, cfg: Config, rng: random.Random) -> WarehouseState:
+    # Produce a neighbor by swapping 
     s = state.clone()
 
     empties_non   = s.empties_non_artery()
