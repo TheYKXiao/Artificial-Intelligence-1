@@ -20,8 +20,8 @@ def genetic_algorithm(cfg: Config, *, pop_size: int, generations: int, seed: int
     rng = random.Random(seed)
     population:List[WarehouseState] = [_random_layout(cfg, rng) for _ in range(pop_size)]
 
-    best_state = min(population, key=lambda s: evaluate(s, cfg,seed))
-    best_score = evaluate(best_state, cfg, seed)
+    best_state = min(population, key=lambda s: evaluate(s, cfg,seed)[0])
+    best_score = evaluate(best_state, cfg, seed)[0]
     no_improve = 0
     mutation = 0.05
     patience = 20
@@ -38,14 +38,14 @@ def genetic_algorithm(cfg: Config, *, pop_size: int, generations: int, seed: int
             child = produce(parent1, parent2,cfg, rng)
 
             if rng.random() < mutation:
-                child = mutate(child, cfg)
+                child = mutate(child, cfg, rng)
 
             population2.append(child)
 
         population = population2
         
-        gen_best = min(population, key=lambda s: evaluate(s, cfg,seed))
-        gen_best_score = evaluate(gen_best, cfg, seed)
+        gen_best = min(population, key=lambda s: evaluate(s, cfg,seed)[0])
+        gen_best_score = evaluate(gen_best, cfg, seed)[0]
         if gen_best_score < best_score:
             best_state, best_score = gen_best.clone(), gen_best_score
             no_improve = 0
@@ -70,12 +70,55 @@ def _weight_calculate(population, cfg, seed) -> list[float]:
     return [i / sum(fitness) for i in fitness]
 
 
-#helper fucntion to define the produce 
-def produce(parent1, parent2, cfg, rng):
-    n = len(parent1)
-    c = random.randint(1, n-1)
-    append = parent1[:c]+parent2[c:]
-    return append
+def produce(parent1: WarehouseState, parent2: WarehouseState, cfg: Config, rng: random.Random) -> WarehouseState:
+    A = artery_mask(cfg.rows, cfg.cols)
+    artery_cells     = all_artery_cells(A)
+    non_artery_cells = all_non_artery_cells(A)
+
+    p1_st = list(parent1.stations)
+    p1_em = list(parent1.empties_non_artery())
+    p2_st = list(parent2.stations)
+    p2_em = list(parent2.empties_non_artery())
+
+    g1 = p1_st + p1_em
+    g2 = p2_st + p2_em
+    n  = len(g1)
+
+    c = rng.randint(1, n - 1)
+    child_genome = g1[:c] + g2[c:]
+
+    raw_st = child_genome[:cfg.n_stations]
+    raw_em = child_genome[cfg.n_stations:]
+
+    def dedup_preserve_order(seq):
+        seen, out = set(), []
+        for x in seq:
+            if x not in seen:
+                seen.add(x)
+                out.append(x)
+        return out, seen
+
+    st_list, used_st = dedup_preserve_order(raw_st)
+    em_list, used_em = dedup_preserve_order(raw_em)
+
+    avail_st = [c for c in artery_cells if c not in used_st]
+    avail_em = [c for c in non_artery_cells if c not in used_em]
+
+    while len(st_list) < cfg.n_stations and avail_st:
+        st_list.append(avail_st.pop(rng.randrange(len(avail_st))))
+    while len(em_list) < cfg.target_non_artery_empties and avail_em:
+        em_list.append(avail_em.pop(rng.randrange(len(avail_em))))
+
+    st_list.sort()
+    em_list.sort()
+
+    artery_index = {cell: i for i, cell in enumerate(artery_cells)}
+    non_artery_index = {cell: i for i, cell in enumerate(non_artery_cells)}
+
+    station_idxs = sorted(artery_index[c] for c in st_list)
+    empty_idxs   = sorted(non_artery_index[c] for c in em_list)
+
+    return build_state_from_choices(cfg, station_idxs, empty_idxs)
 
 #helper function to generate a initial state
 def _random_layout(cfg: Config, rng: random.Random) -> WarehouseState:
@@ -92,9 +135,9 @@ def _random_layout(cfg: Config, rng: random.Random) -> WarehouseState:
 
 
 #helper function to define the state
-def mutate(state: WarehouseState, cfg: Config):
+def mutate(state: WarehouseState, cfg: Config, rng: random.Random) -> WarehouseState:
     s = state.clone()
-    move_type = random.choice(["shelf_swap", "station_move"])
+    move_type = rng.choice(["shelf_swap", "station_move"])
 
     empties_non   = s.empties_non_artery()
     empties_art   = s.empties_artery()
@@ -103,13 +146,13 @@ def mutate(state: WarehouseState, cfg: Config):
 
 
     if move_type == "shelf_swap" and shelves and empties_non:
-        sh  = random.choice(shelves)
-        emp = random.choice(empties_non)
+        sh  = rng.choice(shelves)
+        emp = rng.choice(empties_non)
         s.swap_cells(sh, emp)
 
     elif move_type == "station_move" and stations and empties_art:
-        st  = random.choice(stations)
-        emp = random.choice(empties_art)
+        st  = rng.choice(stations)
+        emp = rng.choice(empties_art)
         s.swap_cells(st, emp)
 
     return s
