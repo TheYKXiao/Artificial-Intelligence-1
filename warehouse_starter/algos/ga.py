@@ -1,3 +1,5 @@
+#The GA algorithm was done with the assistance of AI(ChatGPT), the extend is minimal ~ moderate. 
+#The use of AI has been labeled.
 # ga.py - skeleton for genetic algorithm
 from __future__ import annotations
 from config import Config
@@ -70,6 +72,7 @@ def _weight_calculate(population, cfg, seed) -> list[float]:
     return [i / sum(fitness) for i in fitness]
 
 
+#helper function to define the produce processing (This helper function was assisted with AI)
 def produce(parent1: WarehouseState, parent2: WarehouseState, cfg: Config, rng: random.Random) -> WarehouseState:
     A = artery_mask(cfg.rows, cfg.cols)
     artery_cells     = all_artery_cells(A)
