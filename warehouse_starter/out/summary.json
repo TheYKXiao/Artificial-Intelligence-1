@@ -1,0 +1,29 @@
+{
+  "score": 201.51821625247956,
+  "metrics": {
+    "note": "placeholder objective (implement in sim.py TODO block)",
+    "total_distance": 1298.0,
+    "penalty": 0.0,
+    "orders": 120.0,
+    "J1": 10.816666666666666,
+    "J2": 657.1166666666667,
+    "J3": 0.18849861937641615
+  },
+  "rows": 8,
+  "cols": 8,
+  "n_stations": 3,
+  "orders": 120,
+  "items_per_order": 2,
+  "zipf_alpha": 1.2,
+  "weights": {
+    "w1": 0.4,
+    "w2": 0.3,
+    "w3": 0.3
+  },
+  "seed": 42,
+  "GE": {
+    "one_way": false,
+    "row_dir": "off",
+    "col_dir": "off"
+  }
+}
