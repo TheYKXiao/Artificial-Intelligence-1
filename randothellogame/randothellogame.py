@@ -11,8 +11,11 @@ function, as each player might have their own separate way of calculating utilit
 
 
 '''
+#The advanced search algorithm was done with the assistance of AI(ChatGPT), the extend is minimal ~ moderate. 
+#The use of AI has been labeled.
 
 # run: python randothellogame.py
+import math
 import random
 import copy
 
@@ -218,8 +221,175 @@ class AlphabetaPlayer(OthelloPlayerTemplate):
         return score
 
 
+#preparations for the Monte Carlo Tree Search
+class Node:
+    def __init__(self, state, mycolor,parent=None):
+        self.state = state
+        self.parent = parent
+        self.untried_actions = list(actions(state)) #AI assisted
+        self.children = []
+        self.visits = 0
+        self.values = 0.0
+        self.mycolor = mycolor
+        self.action = None
+        
+
+    def Expand(self):
+        if not self.untried_actions:
+            return None
+        action = self.untried_actions.pop()
+        next_state = result(self.state, action)
+        if next_state is None:
+            return None
+        child = Node(next_state, self.mycolor, parent=self)
+        child.action = action
+        self.children.append(child)
+        return child
+    
+    def Select(self):
+        if not self.children or self.untried_actions:
+            return self
+        best_ucb = float('-inf') #UCB1 formula was assisted with AI
+        best_child = None
+        parent_visits = max(1, self.visits)
+        for child in self.children:
+            if child.visits == 0:
+                ucb = float('inf')
+            else:
+                ucb = (child.values/ child.visits) + math.sqrt(math.log(parent_visits) / child.visits)
+            if ucb > best_ucb:
+                best_ucb = ucb
+                best_child = child
+        return best_child or self
+    
+    def Simulate(self):
+        current_state = copy.deepcopy(self.state)
+        while not terminal_test(current_state):
+            possible_actions = actions(current_state)
+            if not possible_actions: #possible actions were assisted with AI
+                try:
+                    next_state = result(current_state, SKIP)
+                except Exception:
+                    break
+                if next_state is None:
+                    break
+                current_state = next_state
+                continue
+            action = random.choice(possible_actions)
+            next_state = result(current_state, action)
+            if next_state is None:
+                break
+            current_state = next_state
+
+        mcount = 0
+        ocount = 0
+    
+        for i in range(SIZE):
+            for j in range(SIZE):
+                if current_state.board_array[i][j] == self.mycolor:
+                    mcount += 1
+                elif current_state.board_array[i][j] == -self.mycolor:
+                    ocount += 1
+        return float(mcount - ocount)
+
+    def Backpropagate(self, reward):
+        node = self
+        while node is not None:
+            node.visits += 1
+            node.values += reward
+            node = node.parent
+    
+
 class AdvancedPlayer(OthelloPlayerTemplate):
-    pass
+    def __init__(self, mycolor, max_depth=3):
+        self.color = mycolor
+        self.max_depth = max_depth
+    
+    def get_color(self):
+        return self.color
+    
+    def make_move(self, state):
+
+        m = self._monte_carlo_tree_search(state, iters=32)
+        if m is not None:
+            return m
+        
+        value, best_move = self._max_value(state, 0, float('-inf'), float('inf'))
+        if best_move is None:
+            legals = actions(state)
+            best_move = random.choice(legals)
+        return best_move
+    
+    def _max_value(self, state, depth, alpha, beta):
+        if self._is_cutoff(state, depth):
+            return self._utility(state), None
+        v, move = float('-inf'), None
+        for a in actions(state):
+            s2 = result(state, a)
+            if s2 is None:
+                continue
+            v2, a2 = self._min_value(s2, depth + 1, alpha, beta)
+            if v2 > v:
+                v, move = v2, a
+            alpha = max(alpha, v)
+            if v >= beta:
+                return v, move
+        return v, move
+
+    def _min_value(self, state, depth, alpha, beta):
+        if self._is_cutoff(state, depth):
+            return self._utility(state), None
+        v, move = float('inf'), None
+        for a in actions(state):
+            s2 = result(state, a)
+            if s2 is None:
+                continue
+            v2, a2 = self._max_value(s2, depth + 1, alpha, beta)
+            if v2 < v:
+                v, move = v2, a
+            beta = min(beta, v)
+            if v <= alpha:
+                return v, move
+        return v, move
+
+    def _is_cutoff(self, state, depth):
+        if terminal_test(state):
+            return True
+        if self.max_depth is not None and depth >= self.max_depth:
+            return True
+        return False
+
+    def _utility(self, state):
+        score = 0
+        for i in range(SIZE):
+            for j in range(SIZE):
+                if state.board_array[i][j] == self.color:
+                    score += 1
+                elif state.board_array[i][j] == -self.color:
+                    score -= 1
+        return score
+
+    def _monte_carlo_tree_search(self, state, iters=32):
+        tree = Node(state, self.color)
+
+        def _best_child_by_visits(node): #assisted with AI
+            if not node.children:
+                return None
+            return max(node.children, key=lambda ch: ch.visits)
+        
+        for _ in range(iters):
+            leaf = tree.Select()
+            child = leaf.Expand() or leaf
+            reward = child.Simulate()
+            child.Backpropagate(reward)
+
+        best_child = _best_child_by_visits(tree)
+        return best_child.action if best_child is not None else None
+
+
+
+
+        
 
 class RandOthelloState:
     '''A class to represent an othello game state'''
@@ -408,7 +578,8 @@ def play_game(p1 = None, p2 = None):
 def main():
     # black = MinimaxPlayer(BLACK, max_depth=4)
     # black = RandomPlayer(WHITE)
-    black = AlphabetaPlayer(BLACK, max_depth=4)
+    black = AdvancedPlayer(BLACK, max_depth=4)
+    # black = AlphabetaPlayer(BLACK, max_depth=4)
 
     white = RandomPlayer(WHITE)
     # white = AlphabetaPlayer(WHITE)
