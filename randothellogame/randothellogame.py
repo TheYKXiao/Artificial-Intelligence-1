@@ -579,11 +579,20 @@ def main():
     # black = MinimaxPlayer(BLACK, max_depth=4)
     # black = RandomPlayer(WHITE)
     # black = AdvancedPlayer(BLACK, max_depth=4)
-    black = AlphabetaPlayer(BLACK, max_depth=4)
+    # black = AlphabetaPlayer(BLACK, max_depth=4)
 
-    white = RandomPlayer(WHITE)
+    # white = RandomPlayer(WHITE)
     # white = AlphabetaPlayer(WHITE)
+    max_depth = 4
 
+    print("Game round 1")
+    black = AlphabetaPlayer(BLACK, max_depth=max_depth)
+    white = RandomPlayer(WHITE)
+    play_game(black, white)
+
+    print("Game round 2")
+    white = AlphabetaPlayer(WHITE, max_depth=max_depth)
+    black = RandomPlayer(BLACK)
     play_game(black, white)
 
     # play_game()
